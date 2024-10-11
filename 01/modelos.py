@@ -5,16 +5,32 @@ from sklearn.datasets import make_classification
 import numpy as np
 
 class Node:
-    def __call__(self, x):
-        return self.forward(x)
+    def __init__(self):
+        '''
+        Constructor de nuestra clase nodo
+        '''
+        self.gradiente = None
+
+    def __call__(self, *kwargs):
+        return self.forward(*kwargs)
+
+    def forward(self, *kwargs):
+        raise NotImplementedError("Aquí cada sub-clase definira su propio metodo forward")
+
+    def backward(self, *kwargs):
+        raise NotImplementedError("Aquí cada subclase tendrá que implementar su metodo backward")
 
     def __str__(self):
-        return str(self.out)
-#---------------------------------------
-class PreActivation(Node):
-    def __init__(self, weights:np.array, bias:float):
-        self.w = weights
-        self.b = bias
+        return str(self.out) # valor núm del nodo
+#-----------------Aquí va nuestra función para pre-activación----------------------
+class Linear(Node):
+    '''
+    Función que nos sirve para las pre-activaciones
+    '''
+    def __init__(self, input_size, output_size):
+        #self.w = weights
+        self.w = np.random.randn(input_size)
+        self.b = np.random.randn(output_size)
         self.out = None
 
     def forward(self, x:np.array):
@@ -24,7 +40,7 @@ class PreActivation(Node):
     def backward(self, grad_output:float):
         grad_input = self.w * grad_output
         return grad_input
-#---------------------------
+#------------Aquí van nuestras funciones de pre-activación---------------
 class Sigmoide(Node):
     def forward(self, z:float):
         self.out = 1 / (1 + np.exp(-z))
@@ -47,7 +63,33 @@ class Sigmoide(Node):
             if entropia( (np.array(Y_predicciones), Y) ) == 0:
                 return (lineal.w, lineal.b)
         return (lineal.w, lineal.b)
-# -------------------------
+
+class ReLU(Node):
+    '''
+    Función de activación RelU
+    '''
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        fx = max(0,x)
+        return fx
+
+    def backward(self, grad_out):
+        pass 
+
+class Tanh(Node):
+    '''
+    Función de activación tangente hiperbolica
+    '''
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        tanh = (np.exp(x) - np.exp(-x)) / (np.exp(x) + np.exp(-x))
+        return tanh
+
+# ---------Aquí van las funciones para calcular el error----------------
 class CrossEntropy(Node):
     def forward(self, x:tuple):
         Y_predicciones, Y = x
