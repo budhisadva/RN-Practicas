@@ -28,8 +28,10 @@ class Linear(Node):
     Función que nos sirve para las pre-activaciones
     '''
     def __init__(self, input_size, output_size):
-        #self.w = weights
-        self.w = np.random.randn(input_size)
+        # el input_size deben ser la cantidad de neuronas de la capa actual
+        # mientras que el output_size son la cantidad de neuronas en la siguiente capa
+        np.random.randn(42)
+        self.w = np.random.randn(input_size, output_size) #al hacer (input_size x output_size) obtenemos una matriz de dimensiones (input_size, output_size)
         self.b = np.random.randn(output_size)
         self.out = None
 
