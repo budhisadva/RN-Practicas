@@ -74,7 +74,7 @@ class ReLU(Node):
         super().__init__()
 
     def forward(self, x):
-        fx = max(0,x)
+        fx = np.maximum(0,x) 
         return fx
 
     def backward(self, grad_out):
@@ -90,6 +90,16 @@ class Tanh(Node):
     def forward(self, x):
         tanh = (np.exp(x) - np.exp(-x)) / (np.exp(x) + np.exp(-x))
         return tanh
+
+class Softmax(Node):
+    '''
+    activación softmax
+    '''
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        pass
 
 # ---------Aquí van las funciones para calcular el error----------------
 class CrossEntropy(Node):
