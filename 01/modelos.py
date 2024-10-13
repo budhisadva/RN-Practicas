@@ -105,12 +105,11 @@ class Softmax(Node):
 
 # ---------Aquí van las funciones para calcular el error----------------
 class CrossEntropy(Node):
-    def forward(self, x:tuple):
-        Y_predicciones, Y = x
-        acc = 0
-        for i, y in enumerate(Y):
-            acc += -(y*np.log(Y_predicciones[i])+(1-y)*np.log(1-Y_predicciones[i]))
-        self.out = (1/len(Y)) * acc
+    def forward(self, y_true, y_pred):
+        epsilon = 1e-15 # para evitar caer en un log(0)
+        y_pred = np.clip(y_pred, epsilon, 1-epsilon)
+        y_true = y_true.reshape(-1,1)
+        self.out = -np.mean(y_true*np.log(y_pred) + (1-y_true)*np.log(1-y_pred))
         return self.out
 
     def backward(self, x):
