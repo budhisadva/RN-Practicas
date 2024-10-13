@@ -33,11 +33,14 @@ class PreActivation(Node):
         L = SquaredError()
         for t in range(T):
             np.random.shuffle(X)
+            grad_acc = np.zeros(len(X[0]))
             for i, x in enumerate(X):
-                fx = self.forward(X[0])
+                fx = self.forward(x)
                 L((fx,Y[i]))
-                self.w -= lr*self.backward(L.backward())
-                self.b -= lr*self.grad_b
+                grad_r = self.backward(L.backward())
+                grad_acc += grad_r
+            self.w -= lr*grad_acc
+            self.b -= lr*self.grad_b
 
     def predict(self, X):
         Y = []
@@ -132,8 +135,8 @@ def entrena_modelo_lineal():
 
 def main():
     np.random.seed()
-    entrena_modelo_logistico()
-    # entrena_modelo_lineal()
+    # entrena_modelo_logistico()
+    entrena_modelo_lineal()
 
 if __name__ == '__main__':
     main()
