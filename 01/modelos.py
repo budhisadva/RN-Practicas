@@ -99,7 +99,9 @@ class Softmax(Node):
         super().__init__()
 
     def forward(self, x):
-        pass
+        exps = np.exp(x - np.max(x, axis=1, keepdims=True))
+        fx = exps / np.sum(x, axis=1, keepdims=True)
+        return fx
 
 # ---------Aquí van las funciones para calcular el error----------------
 class CrossEntropy(Node):
