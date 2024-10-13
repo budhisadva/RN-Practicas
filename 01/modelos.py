@@ -5,7 +5,6 @@ from sklearn.datasets import make_classification
 from sklearn.datasets import make_regression
 # from matplotlib import pyplot as plt
 import numpy as np
-from sklearn.linear_model import LogisticRegression
 
 class Node:
     def __call__(self, x):
@@ -39,7 +38,7 @@ class PreActivation(Node):
                 L((fx,Y[i]))
                 grad_r = self.backward(L.backward())
                 grad_acc += grad_r
-            self.w -= lr*grad_acc
+            self.w -= (lr/2)*grad_acc
             self.b -= lr*self.grad_b
 
     def predict(self, X):
@@ -135,7 +134,7 @@ def entrena_modelo_lineal():
 
 def main():
     np.random.seed()
-    # entrena_modelo_logistico()
+    entrena_modelo_logistico()
     entrena_modelo_lineal()
 
 if __name__ == '__main__':
