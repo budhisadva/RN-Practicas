@@ -26,12 +26,13 @@ class PreActivation(Node):
         return self.x*cadena
 
     def fit(self, X, Y, T=100, lr=0.1):
+        n, d = X.shape
         L = SquaredError()
         for t in range(T):
-            grad_w = np.zeros(X.shape[1])
+            grad_w = np.zeros(d)
             grad_b = []
             loss = []
-            indexes = np.arange(X.shape[0])
+            indexes = np.arange(n)
             np.random.shuffle(indexes)
             for i in indexes:
                 z = self.forward(X[i])
@@ -47,7 +48,6 @@ class PreActivation(Node):
             self.w -= lr*grad_w_R
             self.b -= lr*grad_b_R
 
-
     def predict(self, X):
         Y = []
         for x in X:
@@ -60,13 +60,14 @@ class Sigmoide(Node):
         return self.out
 
     def fit(self, X, Y, T=100, lr=0.1):
-        linear = PreActivation(X.shape[1])
+        n, d = X.shape
+        linear = PreActivation(d)
         L = CrossEntropy()
         for t in range(T):
-            grad_w = np.zeros(X.shape[1])
+            grad_w = np.zeros(d)
             grad_b = []
             loss = []
-            indexes = np.arange(X.shape[0])
+            indexes = np.arange(n)
             np.random.shuffle(indexes)
             for i in indexes:
                 fx = self.forward(linear(X[i]))
@@ -99,9 +100,6 @@ class Perceptron(Node):
         return self.out
 
 class CrossEntropy(Node):
-    def __init__(self):
-        self.v_entropias = []
-
     def forward(self, x:tuple):
         fx, y = x
         epsilon = 1e-20
