@@ -99,6 +99,43 @@ class Perceptron(Node):
             self.out = 0
         return self.out
 
+    def fit(self, X, Y, T=100, lr=0.1):
+        n, d = X.shape
+        linear = PreActivation(d)
+        linear.w = np.array([ 1.0 for x in range(d)])
+        linear.b = 1
+        logistica = Sigmoide()
+        L = SquaredError()
+        for t in range(T):
+            grad_w = np.zeros(d)
+            grad_b = []
+            loss = []
+            indexes = np.arange(n)
+            np.random.shuffle(indexes)
+            for i in indexes:
+                fx = self.forward(logistica(linear(X[i])))
+                loss.append(L((fx,Y[i])))
+                delta = fx-Y[i]
+                grad_w += linear.backward(delta)
+                grad_b.append(delta)
+            grad_b_R = np.mean(grad_b)
+            grad_w_R = (1/len(X))*grad_w
+            R = np.mean(loss)
+            if R == 0:
+                self.z = linear
+                return
+            linear.w -= lr*grad_w_R
+            linear.b -= lr*grad_b_R
+        self.z = linear
+
+    def predict(self, X):
+        Y = []
+        log = Sigmoide()
+        for x in X:
+            Y.append(self.forward(log(self.z(x))))
+        return np.array(Y)
+
+
 class CrossEntropy(Node):
     def forward(self, x:tuple):
         fx, y = x
@@ -141,10 +178,42 @@ def entrena_modelo_lineal():
     print(f"Mean squared error: {mse}")
     print(f"R2: {r2}")
 
+def entrena_perceptron():
+    #
+    X = np.array([[0,0],[0,1],[1,0],[1,1]])
+    print("->")
+    Y1 = np.array([1,1,0,1])
+    implicacion = Perceptron()
+    implicacion.fit(X, Y1, 100, 1)
+    y_pred = implicacion.predict(X)
+    print(implicacion.z.w, implicacion.z.b)
+    #
+    print("NAND")
+    Y2 = np.array([1,1,1,0])
+    NAND = Perceptron()
+    NAND.fit(X, Y2, 100, 1)
+    y_pred = NAND.predict(X)
+    print(NAND.z.w, NAND.z.b)
+    #
+    print("NOR")
+    Y3 = np.array([1,0,0,0])
+    NOR = Perceptron()
+    NOR.fit(X, Y3, 100, 1)
+    y_pred = NOR.predict(X)
+    print(NOR.z.w, NOR.z.b)
+    #
+    print("Pregunta 7")
+    X4 = np.array([[1,1,1], [1,0,1], [0,1,1], [1,0,0], [0,1,0], [0,0,0]])
+    Y4 = np.array([1,1,1,0,0,0])
+    modelo = Perceptron()
+    modelo.fit(X4, Y4, 100, 0.5)
+    print(modelo.z.w, modelo.z.b)
+
 def main():
     # np.random.seed(42)
-    entrena_modelo_logistico()
-    entrena_modelo_lineal()
+    # entrena_modelo_logistico()
+    # entrena_modelo_lineal()
+    entrena_perceptron()
 
 if __name__ == '__main__':
     main()
