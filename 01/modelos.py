@@ -1,70 +1,76 @@
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report
-from sklearn.datasets import make_classification
-# from matplotlib import pyplot as plt
 import numpy as np
 
 class Node:
-    def __init__(self):
+    def __init__(self, parametros = False):
         '''
         Constructor de nuestra clase nodo
         '''
+        self.parametros = parametros
+        self.parent = None
         self.gradiente = None
 
     def __call__(self, *kwargs):
         return self.forward(*kwargs)
 
-    def forward(self, *kwargs):
-        raise NotImplementedError("Aquí cada sub-clase definira su propio metodo forward")
-
-    def backward(self, *kwargs):
-        raise NotImplementedError("Aquí cada subclase tendrá que implementar su metodo backward")
 
     def __str__(self):
         return str(self.out) # valor núm del nodo
+
+    def zero_grad(self):
+        self.gradiente = 0
+        #self.parent = None
+
+class Variable(Node):
+    def __init__(self, out, parent=None):
+        super().__init__(parametros=True)
+        self.out = out
+        self.parent = parent
+
+    def backward(self, grad=1):
+        self.gradiente = grad
 #-----------------Aquí va nuestra función para pre-activación----------------------
 class Linear(Node):
     '''
     Función que nos sirve para las pre-activaciones
     '''
     def __init__(self, input_size, output_size):
+        super().__init__(parametros=True)
         # el input_size deben ser la cantidad de neuronas de la capa actual
         # mientras que el output_size son la cantidad de neuronas en la siguiente capa
-        np.random.randn(42)
+        np.random.seed(42)
         self.w = np.random.randn(input_size, output_size) #al hacer (input_size x output_size) obtenemos una matriz de dimensiones (input_size, output_size)
         self.b = np.random.randn(output_size)
-        self.out = None
+        #self.out = None
 
-    def forward(self, x:np.array):
-        self.out = np.dot(x, self.w) + self.b
-        return self.out
+    def forward(self, x):
+        self.parent = x
+        self.out = np.dot(x.out, self.w) + self.b
+        return Variable(self.out, parent=self)
 
     def backward(self, grad_output:float):
-        grad_input = self.w * grad_output
-        return grad_input
+        # gradientes para los pesos y el bias
+        self.grad_w = np.dot(self.parent.out.T, grad_output) 
+        self.grad_b = np.mean(grad_output, axis=0)
+
+        self.gradiente = np.dot(grad_output, self.w.T)
+
+        # llama el backward del nodo padre para la propagacion
+        #if self.parent is not None:
+        self.parent.backward(self.gradiente)
+        #return self.grad_w, self.grad_b
+
 #------------Aquí van nuestras funciones de pre-activación---------------
 class Sigmoide(Node):
     def forward(self, z:float):
-        self.out = 1 / (1 + np.exp(-z))
-        return self.out
+        self.parent = z
+        self.out = 1 / (1 + np.exp(-z.out))
+        return Variable(self.out, parent=self)
 
-    def backward(self):
-        pass
-
-    def fit(self, X, Y, T=100, lr=0.1):
-        lineal = PreActivation(weights=np.random.randn(X.shape[1]), bias=np.random.randn())
-        entropia = CrossEntropy()
-        for t in range(T):
-            Y_predicciones = []
-            for i, x in enumerate(X):
-                fx = self.forward(lineal(x))
-                Y_predicciones.append(fx)
-                delta = lr*(fx-Y[i])
-                lineal.w = lineal.w - delta*x
-                lineal.b = lineal.b - delta
-            if entropia( (np.array(Y_predicciones), Y) ) == 0:
-                return (lineal.w, lineal.b)
-        return (lineal.w, lineal.b)
+    def backward(self, grad=1):
+        grad_in = self.out * (1 - self.out) # derivada de la sigmoide
+        self.gradiente = grad_in * grad #g gradiente local
+        if self.parent is not None:
+            self.parent.backward(grad=self.gradiente) # propagacion hacia atras si existe el padre
 
 class ReLU(Node):
     '''
@@ -74,11 +80,14 @@ class ReLU(Node):
         super().__init__()
 
     def forward(self, x):
-        fx = np.maximum(0,x) 
-        return fx
+        self.parent = x
+        self.out = np.maximum(0,x.out) 
+        return Variable(self.out, parent=self)
 
-    def backward(self, grad_out):
-        pass 
+    def backward(self, grad=1):
+        relu_grad = (self.parent.out > 0).astype(float)
+        self.gradiente = grad * relu_grad
+        self.parent.backward(grad=self.gradiente)
 
 class Tanh(Node):
     '''
@@ -88,8 +97,14 @@ class Tanh(Node):
         super().__init__()
 
     def forward(self, x):
-        tanh = (np.exp(x) - np.exp(-x)) / (np.exp(x) + np.exp(-x))
-        return tanh
+        self.parent = x
+        self.out = (np.exp(x.out) - np.exp(-x.out)) / (np.exp(x.out) + np.exp(-x.out))
+        return Variable(self.out, parent=self)
+
+    def backward(self, grad=1):
+        tanh_grad = 1 - self.out**2
+        self.gradiente = tanh_grad*grad
+        self.parent.backward(grad=self.gradiente)
 
 class Softmax(Node):
     '''
@@ -99,33 +114,40 @@ class Softmax(Node):
         super().__init__()
 
     def forward(self, x):
-        exps = np.exp(x - np.max(x, axis=1, keepdims=True))
-        fx = exps / np.sum(x, axis=1, keepdims=True)
-        return fx
+        self.parent = x
+        exps = np.exp(x.out - np.max(x.out, axis=1, keepdims=True))
+        self.out = exps / np.sum(exps, axis=1, keepdims=True)
+        return Variable(self.out, parent=self)
+
+    def backward(self, grad=1):
+        #al parecer todo se simplifica con
+        #cross entropy y softmax
+        self.gradiente = grad
+        if self.parent is not None:
+            self.parent.backward(grad=self.gradiente)
+
 
 # ---------Aquí van las funciones para calcular el error----------------
 class CrossEntropy(Node):
-    def forward(self, y_true, y_pred):
-        epsilon = 1e-15 # para evitar caer en un log(0)
-        y_pred = np.clip(y_pred, epsilon, 1-epsilon)
-        y_true = y_true.reshape(-1,1)
-        self.out = -np.mean(y_true*np.log(y_pred) + (1-y_true)*np.log(1-y_pred))
-        return self.out
+    def __init__(self):
+        super().__init__()
 
-    def backward(self, x):
-        y, fx = x
-        if fx == 0:
-            return None
-        return (fx-y) / fx*(1-fx)
+    def forward(self, y_true, y_pred):
+        self.parent = y_pred
+        self.y_true = y_true.reshape(-1,1) #parece que no es necesario un reshape para multiclase
+
+        epsilon = 1e-15 # para evitar caer en un log(0)
+        y_pred = np.clip(y_pred.out, epsilon, 1-epsilon)
+
+        self.out = -np.sum(self.y_true*np.log(y_pred)) / self.y_true.shape[0]
+        return Variable(self.out, parent=self)
+
+    def backward(self):
+        epsilon = 1e-15
+        y_pred = self.parent.out
+        self.gradiente = (y_pred - self.y_true) / self.y_true.shape[0]
+        self.parent.backward(grad=self.gradiente)
 # ---------------------
-def main():
-    np.random.seed(42)
-    X, Y = make_classification(n_samples=1000, n_features=2, n_redundant=0, n_informative=2, random_state=10)
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3)
-    #
-    logistica = Sigmoide()
-    w,b = logistica.fit(x_train, y_train)
-    print(w, b)
 
 
 if __name__ == '__main__':
