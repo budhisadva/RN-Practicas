@@ -80,7 +80,7 @@ class ReLU(Node):
     Función de activación RelU
     '''
     def __init__(self):
-        super().__init__()
+        super().__init__(parametros=True)
 
     def forward(self, x):
         self.parent = x
@@ -97,7 +97,7 @@ class Tanh(Node):
     Función de activación tangente hiperbolica
     '''
     def __init__(self):
-        super().__init__()
+        super().__init__(parametros=True)
 
     def forward(self, x):
         self.parent = x
@@ -114,7 +114,7 @@ class Softmax(Node):
     activación softmax
     '''
     def __init__(self):
-        super().__init__()
+        super().__init__(parametros=True)
 
     def forward(self, x):
         self.parent = x
@@ -153,20 +153,20 @@ class CrossEntropy(Node):
             self.parent.backward(grad=self.res)
 # --------------------- Aquí van los optimizadores --------------------------------------
 class AdagradOptimizer():
-    def __init__(self, learning_rate=0.01, epsilon=1e-8):
+    def __init__(self, learning_rate=0.1, epsilon=1e-8):
         self.learning_rate = learning_rate
         self.epsilon = epsilon
         self.grad_squared_accum = {}
 
-        def update(self, params, grads):
+    def update(self, params, grads):
             # si es la primeras vez, inicializamos el acumulador de gradientes
-            for key in params:
-                if key not in self.grad_squared_accum:
-                    self.grad_squared_accum[key] = np.zeros_like(grads[key])
-                # acumulamos el cuadrado de los gradientes
-                self.grad_squared_accum[key] = self.grad_squared_accum[key] + (grads[key])**2
-                # actualizamos los parametros usando Adagrad
-                params[key] = params[key] - ((self.learning_rate) / (np.sqrt(self.grad_squared_accum[key]) + self.epsilon)) * grads[key]
+        for key in params:
+            if key not in self.grad_squared_accum:
+                self.grad_squared_accum[key] = np.zeros_like(grads[key])
+            # acumulamos el cuadrado de los gradientes
+            self.grad_squared_accum[key] = self.grad_squared_accum[key] + (grads[key])**2
+            # actualizamos los parametros usando Adagrad
+            params[key] = params[key] - ((self.learning_rate) / (np.sqrt(self.grad_squared_accum[key]) + self.epsilon)) * grads[key]
 
 #----------------------- class sequential ---------------------------------------------------
 class Sequential(Node):
@@ -177,7 +177,7 @@ class Sequential(Node):
         self.layers = kwargs
         self.params = []
         for layer in self.layers:
-            if layer.params:
+            if layer.parametros:
                 self.params.append(layer)
 
     def forward(self, x):
