@@ -8,6 +8,7 @@ class Node:
         self.parametros = parametros
         self.parent = None
         self.gradiente = None
+        self.out = None
 
     def __call__(self, *kwargs):
         return self.forward(*kwargs)
@@ -28,6 +29,8 @@ class Variable(Node):
 
     def backward(self, grad=1):
         self.gradiente = grad
+        if self.parent is not None:
+            self.parent.backward(self.gradiente)
 #-----------------Aquí va nuestra función para pre-activación----------------------
 class Linear(Node):
     '''
@@ -37,7 +40,7 @@ class Linear(Node):
         super().__init__(parametros=True)
         # el input_size deben ser la cantidad de neuronas de la capa actual
         # mientras que el output_size son la cantidad de neuronas en la siguiente capa
-        np.random.seed(42)
+        #np.random.seed(42)
         self.w = np.random.randn(input_size, output_size) #al hacer (input_size x output_size) obtenemos una matriz de dimensiones (input_size, output_size)
         self.b = np.random.randn(output_size)
         #self.out = None
@@ -55,9 +58,9 @@ class Linear(Node):
         self.gradiente = np.dot(grad_output, self.w.T)
 
         # llama el backward del nodo padre para la propagacion
-        #if self.parent is not None:
-        self.parent.backward(self.gradiente)
-        #return self.grad_w, self.grad_b
+        if self.parent is not None:
+            self.parent.backward(self.gradiente)
+        
 
 #------------Aquí van nuestras funciones de pre-activación---------------
 class Sigmoide(Node):
@@ -137,16 +140,17 @@ class CrossEntropy(Node):
         self.y_true = y_true.reshape(-1,1) #parece que no es necesario un reshape para multiclase
 
         epsilon = 1e-15 # para evitar caer en un log(0)
-        y_pred = np.clip(y_pred.out, epsilon, 1-epsilon)
+        self.y_pred = np.clip(y_pred.out, epsilon, 1-epsilon)
 
-        self.out = -np.sum(self.y_true*np.log(y_pred)) / self.y_true.shape[0]
+        self.out = -np.sum(self.y_true*np.log(self.y_pred)) / self.y_true.shape[0]
         return Variable(self.out, parent=self)
 
-    def backward(self):
-        epsilon = 1e-15
-        y_pred = self.parent.out
-        self.gradiente = (y_pred - self.y_true) / self.y_true.shape[0]
-        self.parent.backward(grad=self.gradiente)
+    def backward(self, grad=1):
+        #epsilon = 1e-15
+        #y_pred = self.parent.out
+        self.res = ((self.y_pred - self.y_true) / self.y_true.shape[0]) * grad
+        if self.parent is not None:
+            self.parent.backward(grad=self.res)
 # ---------------------
 
 
