@@ -1,3 +1,4 @@
+from matplotlib import pyplot as plt
 import numpy as np
 
 def make_classification(r0=1, r1=3, k=1000):
@@ -15,10 +16,16 @@ def make_classification(r0=1, r1=3, k=1000):
 
     return X,Y
 
-def main():
-    x, y = make_classification()
-    # print(x)
-    print(y)
+def grafica_data(X, Y):
+    # X: matriz de 2000x2
+    # Y: matriz de 2000x1
+    plt.figure(figsize=(8,6))
+    plt.scatter(X[Y == 0][:, 0], X[Y == 0][:,1], color='purple', label='Clase 0', alpha=0.5)
+    plt.scatter(X[Y == 1][:, 0], X[Y == 1][:,1], color='yellow', label='Clase 1', alpha=0.5)
+    plt.title('Datos generados manualmente')
+    plt.legend()
+    plt.show()
 
-if __name__ == '__main__':
-    main()
+def crea_batch(X, size):
+    n = X.shape[0]
+    return [ X[i:i+size] for i in range(0, n, size)]
