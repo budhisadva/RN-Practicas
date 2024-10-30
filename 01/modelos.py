@@ -88,7 +88,8 @@ class ReLU(Node):
         return Variable(self.out, parent=self)
 
     def backward(self, grad=1):
-        relu_grad = (self.parent.out > 0).astype(float)
+        #relu_grad = (self.parent.out > 0).astype(float)
+        relu_grad = (1 / np.abs(self.parent.out))*np.maximum(0,self.parent.out)
         self.gradiente = grad * relu_grad
         self.parent.backward(grad=self.gradiente)
 
@@ -158,8 +159,32 @@ class AdagradOptimizer():
         self.epsilon = epsilon
         self.grad_squared_accum = {}
 
-    def update(self, params, grads):
-            # si es la primeras vez, inicializamos el acumulador de gradientes
+    def get_params_and_grads(self, model):
+        params, grads = {}, {}
+        linear_index = 1
+
+        for layer in model.params:
+            if isinstance(layer, Linear):
+                params[f"w{linear_index}"] = layer.w
+                params[f"b{linear_index}"] = layer.b
+                grads[f"w{linear_index}"] = layer.grad_w
+                grads[f"b{linear_index}"] = layer.grad_b
+                linear_index += 1
+
+        return params, grads
+
+    def apply_updates(self, model, params):
+        linear_index = 1
+        for i, layer in enumerate(model.params):
+            if isinstance(layer, Linear):
+                layer.w = params[f"w{linear_index}"]
+                layer.b = params[f"b{linear_index}"]
+                linear_index += 1
+
+    def update(self, model):
+        #obtenemos los parametros y gradientes del modelo
+        params, grads = self.get_params_and_grads(model)
+        # si es la primeras vez, inicializamos el acumulador de gradientes
         for key in params:
             if key not in self.grad_squared_accum:
                 self.grad_squared_accum[key] = np.zeros_like(grads[key])
@@ -167,6 +192,9 @@ class AdagradOptimizer():
             self.grad_squared_accum[key] = self.grad_squared_accum[key] + (grads[key])**2
             # actualizamos los parametros usando Adagrad
             params[key] = params[key] - ((self.learning_rate) / (np.sqrt(self.grad_squared_accum[key]) + self.epsilon)) * grads[key]
+
+        # aplicamos los parametros actualizados al modelo
+        self.apply_updates(model, params)
 
 #----------------------- class sequential ---------------------------------------------------
 class Sequential(Node):
