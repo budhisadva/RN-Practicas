@@ -25,34 +25,42 @@ class FeedForward:
         fx, y = kwargs
         self.a1.backward(self.h1.backward(self.a2.backward(self.h2.backward(self.a3.backward(self.h3.backward(fx, y))))))
 
-    def adagrad(self, epsilon=1e-8, lr=0.1):
-        self.a3.m_w = self.a3.m_w + np.pow(self.a3.grad_w,2)
-        self.a3.m_b = self.a3.m_b + np.pow(self.a3.grad_b,2)
-        self.a3.w -= (lr/np.sqrt(self.a3.m_w+epsilon)) * self.a3.grad_w
-        self.a3.b -= (lr/np.sqrt(self.a3.m_b+epsilon)) * self.a3.grad_b
+    def adagrad(self, mini_batch_size, epsilon=1e-8, lr=0.1):
+        grad_w3, grad_b3 = self.a3.get_grad(mini_batch_size)
+        self.a3.m_w = self.a3.m_w + np.pow(grad_w3,2)
+        self.a3.m_b = self.a3.m_b + np.pow(grad_b3,2)
+        self.a3.w -= (lr/np.sqrt(self.a3.m_w+epsilon)) * grad_w3
+        self.a3.b -= (lr/np.sqrt(self.a3.m_b+epsilon)) * grad_b3
         #
-        self.a2.m_w = self.a2.m_w + np.pow(self.a2.grad_w,2)
-        self.a2.m_b = self.a2.m_b + np.pow(self.a2.grad_b,2)
-        self.a2.w -= (lr/np.sqrt(self.a2.m_w+epsilon)) * self.a2.grad_w
-        self.a2.b -= (lr/np.sqrt(self.a2.m_b+epsilon)) * self.a2.grad_b
+        grad_w2, grad_b2 = self.a2.get_grad(mini_batch_size)
+        self.a2.m_w = self.a2.m_w + np.pow(grad_w2,2)
+        self.a2.m_b = self.a2.m_b + np.pow(grad_b2,2)
+        self.a2.w -= (lr/np.sqrt(self.a2.m_w+epsilon)) * grad_w2
+        self.a2.b -= (lr/np.sqrt(self.a2.m_b+epsilon)) * grad_b2
         #
-        self.a1.m_w = self.a1.m_w + np.pow(self.a1.grad_w,2)
-        self.a1.m_b = self.a1.m_b + np.pow(self.a1.grad_b,2)
-        self.a1.w -= (lr/np.sqrt(self.a1.m_w+epsilon)) * self.a1.grad_w
-        self.a1.b -= (lr/np.sqrt(self.a1.m_b+epsilon)) * self.a1.grad_b
+        grad_w1, grad_b1 = self.a1.get_grad(mini_batch_size)
+        self.a1.m_w = self.a1.m_w + np.pow(grad_w1,2)
+        self.a1.m_b = self.a1.m_b + np.pow(grad_b1,2)
+        self.a1.w -= (lr/np.sqrt(self.a1.m_w+epsilon)) * grad_w1
+        self.a1.b -= (lr/np.sqrt(self.a1.m_b+epsilon)) * grad_b1
 
     def fit(self, X, Y, size=10, lr=0.1, T=100):
         n, d = X.shape
+        min_loss = 100
         for t in range(T):
+            if (t*100)/T % 10 == 0:
+                print(f"Avance {(t*100)/T}%")
             indexes = np.arange(n)
             np.random.shuffle(indexes)
             batches = crea_batch(indexes, size)
             for batch in batches:
+                loss = 0
                 for i in batch:
                     fx = self.forward(X[i])
-                    loss = self.L(fx, Y[i])
+                    loss += self.L(fx, Y[i])
                     self.backward(fx, Y[i])
-                    self.adagrad()
+                loss /= size
+                self.adagrad(size)
 
     def predict(self, X):
         Y = []
@@ -64,14 +72,14 @@ def main():
     X, Y = make_classification()
     x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3)
     n, d = X.shape
-    red = FeedForward(d, 5, 6)
-    red.fit(x_train, y_train)
+    red = FeedForward(d, 35, 35)
+    red.fit(x_train, y_train, T=100)
     y_pred = red.predict(x_test)
-    tem = []
+    por_clase = []
     for i in range(len(y_test)):
-        tem.append(y_pred[i][int(y_test[i])])
-    lista = [1 if x > 0.5 else 0 for x in tem]
-    report = classification_report(y_test, lista)
+        por_clase.append(y_pred[i][int(y_test[i])])
+    prediccion_binaria = [1 if x > 0.5 else 0 for x in por_clase]
+    report = classification_report(y_test, prediccion_binaria)
     print(report)
 
 if __name__ == '__main__':

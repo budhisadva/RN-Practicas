@@ -1,15 +1,12 @@
 import numpy as np
 
 class Node:
-    def __init__(self):
-        pass
-
     def __call__(self, *kwargs):
         return self.forward(*kwargs)
 
     def __str__(self):
-        return str(self.out) #Valor num del nodo
-# Linear
+        return str(self.out)
+
 class Linear(Node):
     def __init__(self, row, column, inicializacion=None):
         if inicializacion is not None:
@@ -20,6 +17,10 @@ class Linear(Node):
         else:
             self.w = np.random.randn(row, column) * 0.01
         self.b = np.array([0.0 for _ in range(row)])
+        self.grad_w = np.zeros(self.w.shape)
+        self.grad_b = np.zeros(self.b.shape[0])
+        self.m_w = 0
+        self.m_b = 0
 
     def forward(self, *kwargs):
         self.x = kwargs[0]
@@ -28,12 +29,17 @@ class Linear(Node):
 
     def backward(self, *kwargs):
         d = kwargs[0]
-        self.grad_b = d
-        self.m_w = 0
-        self.m_b = 0
-        self.grad_w = np.outer(d, self.x)
+        self.grad_b += d
+        self.grad_w += np.outer(d, self.x)
         return np.dot(d, self.w)
-# ReLU
+
+    def get_grad(self, size):
+        grad_w = self.grad_w/size
+        grad_b = self.grad_b/size
+        self.grad_w = np.zeros(self.w.shape)
+        self.grad_b = np.zeros(self.b.shape[0])
+        return (grad_w, grad_b)
+
 class ReLU(Node):
     def forward(self, *kwargs):
         x = kwargs[0]
@@ -50,7 +56,7 @@ class ReLU(Node):
         cadena = kwargs[0]
         self.d = self.derivada*cadena
         return self.d
-# Tanh
+
 class Tanh(Node):
     def forward(self, *kwargs):
         x = kwargs[0]
@@ -62,7 +68,7 @@ class Tanh(Node):
         derivada = 1 - self.out**2
         self.d = derivada*cadena
         return self.d
-# Softmax
+
 class Softmax(Node):
     def forward(self, *kwargs):
         x = kwargs[0]
@@ -78,12 +84,12 @@ class Softmax(Node):
         fx, y = kwargs
         self.d = fx-y
         return self.d
-# CrossEntropy
+
 class CrossEntropy(Node):
     def forward(self, *kwargs):
         fx, y = kwargs
         y = int(y)
         epsilon = 1e-20
         fx = np.clip(fx, epsilon, 1-epsilon)
-        self.out = -np.log(fx[y])
+        self.out = float(-np.log(fx[y]))
         return self.out
