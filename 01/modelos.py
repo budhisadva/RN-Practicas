@@ -21,6 +21,12 @@ class Node:
         self.gradiente = 0
         #self.parent = None
 
+    def argmax(self):
+        if self.out is not None:
+            return np.argmax(self.out, axis=1)
+        else:
+            raise ValueError("No se ha ejecutado forward, no hay salida para calcular argmax.")
+
 class Variable(Node):
     def __init__(self, out, parent=None):
         super().__init__(parametros=True)
@@ -36,14 +42,17 @@ class Linear(Node):
     '''
     Función que nos sirve para las pre-activaciones
     '''
-    def __init__(self, input_size, output_size):
+    def __init__(self, input_size, output_size, init_type=None):
         super().__init__(parametros=True)
-        # el input_size deben ser la cantidad de neuronas de la capa actual
-        # mientras que el output_size son la cantidad de neuronas en la siguiente capa
-        #np.random.seed(42)
-        self.w = np.random.randn(input_size, output_size) #al hacer (input_size x output_size) obtenemos una matriz de dimensiones (input_size, output_size)
-        self.b = np.random.randn(output_size)
-        #self.out = None
+        
+        if init_type == 'Xavier':
+            self.w = np.random.randn(input_size, output_size) * np.sqrt(2.0 / (input_size + output_size))
+        elif init_type == 'He':
+            self.w = np.random.rand(input_size, output_size) * np.sqrt(2.0 / input_size)
+        else:
+            self.w = np.random.randn(input_size, output_size) * 0.01
+
+        self.b = np.zeros(output_size)
 
     def forward(self, x):
         self.parent = x
@@ -52,7 +61,7 @@ class Linear(Node):
 
     def backward(self, grad_output:float):
         # gradientes para los pesos y el bias
-        self.grad_w = np.dot(self.parent.out.T, grad_output) 
+        self.grad_w = np.dot(self.parent.out.T, grad_output) / self.parent.out.shape[0]
         self.grad_b = np.mean(grad_output, axis=0)
 
         self.gradiente = np.dot(grad_output, self.w.T)
@@ -149,52 +158,11 @@ class CrossEntropy(Node):
     def backward(self, grad=1):
         #epsilon = 1e-15
         #y_pred = self.parent.out
-        self.res = ((self.y_pred - self.y_true) / self.y_true.shape[0]) * grad
+        self.res = ((self.y_pred - self.y_true) / self.y_true.shape[0])
         if self.parent is not None:
             self.parent.backward(grad=self.res)
 # --------------------- Aquí van los optimizadores --------------------------------------
-class AdagradOptimizer():
-    def __init__(self, learning_rate=0.1, epsilon=1e-8):
-        self.learning_rate = learning_rate
-        self.epsilon = epsilon
-        self.grad_squared_accum = {}
 
-    def get_params_and_grads(self, model):
-        params, grads = {}, {}
-        linear_index = 1
-
-        for layer in model.params:
-            if isinstance(layer, Linear):
-                params[f"w{linear_index}"] = layer.w
-                params[f"b{linear_index}"] = layer.b
-                grads[f"w{linear_index}"] = layer.grad_w
-                grads[f"b{linear_index}"] = layer.grad_b
-                linear_index += 1
-
-        return params, grads
-
-    def apply_updates(self, model, params):
-        linear_index = 1
-        for i, layer in enumerate(model.params):
-            if isinstance(layer, Linear):
-                layer.w = params[f"w{linear_index}"]
-                layer.b = params[f"b{linear_index}"]
-                linear_index += 1
-
-    def update(self, model):
-        #obtenemos los parametros y gradientes del modelo
-        params, grads = self.get_params_and_grads(model)
-        # si es la primeras vez, inicializamos el acumulador de gradientes
-        for key in params:
-            if key not in self.grad_squared_accum:
-                self.grad_squared_accum[key] = np.zeros_like(grads[key])
-            # acumulamos el cuadrado de los gradientes
-            self.grad_squared_accum[key] = self.grad_squared_accum[key] + (grads[key])**2
-            # actualizamos los parametros usando Adagrad
-            params[key] = params[key] - ((self.learning_rate) / (np.sqrt(self.grad_squared_accum[key]) + self.epsilon)) * grads[key]
-
-        # aplicamos los parametros actualizados al modelo
-        self.apply_updates(model, params)
 
 #----------------------- class sequential ---------------------------------------------------
 class Sequential(Node):
